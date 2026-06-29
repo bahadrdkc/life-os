@@ -1,26 +1,39 @@
 @import "tailwindcss";
 
+/* next-themes class stratejisi: <html class="dark"> ile koyu mod. */
+@custom-variant dark (&:where(.dark, .dark *));
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #fafafa;
+  --foreground: #18181b;
+  --card: #ffffff;
+  --border: #e4e4e7;
+  --muted: #71717a;
+  --accent: #6366f1;
+}
+
+.dark {
+  --background: #0a0a0b;
+  --foreground: #ededed;
+  --card: #161618;
+  --border: #27272a;
+  --muted: #a1a1aa;
+  --accent: #818cf8;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-border: var(--border);
+  --color-muted: var(--muted);
+  --color-accent: var(--accent);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans), system-ui, sans-serif;
 }
