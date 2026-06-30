@@ -1,35 +1,93 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { BentoCard } from "@/components/ui/bento-card";
+import { QuickCapture } from "@/components/dashboard/quick-capture";
+import { getTodayTasks } from "@/lib/tasks";
+import { getRecentNotes } from "@/lib/notes";
+import { formatDateTime } from "@/lib/format";
+import { priorityMeta } from "@/lib/priority";
 import type { Space } from "@/lib/types";
 
 export default async function DashboardPage() {
   const supabase = await createClient();
-  const { data: spaces } = await supabase
-    .from("spaces")
-    .select("*")
-    .order("sort_order");
 
-  const list = (spaces ?? []) as Space[];
+  // Tüm panel verisini paralel çek.
+  const [{ data: spacesData }, todayTasks, recentNotes] = await Promise.all([
+    supabase.from("spaces").select("*").order("sort_order"),
+    getTodayTasks(),
+    getRecentNotes(5),
+  ]);
+  const spaces = (spacesData ?? []) as Space[];
 
   return (
     <div className="mx-auto max-w-5xl p-6">
       <h1 className="mb-6 text-2xl font-bold text-foreground">Panel</h1>
 
-      {/* Bento grid — placeholder kutular. İçerik Aşama 2'de. */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        <BentoCard title="Bugün" className="lg:col-span-2" />
-        <BentoCard title="Hızlı Yakala" />
-        <BentoCard title="Son Notlar" />
+        {/* Bugün */}
+        <BentoCard title="Bugün" className="lg:col-span-2">
+          {todayTasks.length === 0 ? (
+            <p className="text-sm text-muted">Bugün için görev yok 🎉</p>
+          ) : (
+            <ul className="space-y-1.5">
+              {todayTasks.map((t) => {
+                const pr = priorityMeta(t.priority);
+                return (
+                  <li key={t.id} className="flex items-center gap-2 text-sm">
+                    <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: t.spaces?.color ?? "#888" }} />
+                    <span className="truncate text-foreground">{t.title}</span>
+                    {t.spaces && (
+                      <span className="shrink-0 text-xs text-muted">
+                        {t.spaces.icon} {t.spaces.name}
+                      </span>
+                    )}
+                    {t.priority > 0 && (
+                      <span className="shrink-0 text-xs" style={{ color: pr.color }}>●</span>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </BentoCard>
 
-        <BentoCard title="Alanlarım" className="sm:col-span-2">
-          {list.length === 0 ? (
+        {/* Hızlı Yakala */}
+        <BentoCard title="Hızlı Yakala">
+          <QuickCapture spaces={spaces} />
+        </BentoCard>
+
+        {/* Son Notlar */}
+        <BentoCard title="Son Notlar">
+          {recentNotes.length === 0 ? (
+            <p className="text-sm text-muted">Henüz not yok.</p>
+          ) : (
+            <ul className="space-y-1">
+              {recentNotes.map((n) => (
+                <li key={n.id}>
+                  <Link
+                    href={`/dashboard/space/${n.space_id}?note=${n.id}`}
+                    className="flex flex-col rounded-lg px-2 py-1 hover:bg-border/40"
+                  >
+                    <span className="line-clamp-1 text-sm font-medium text-foreground">
+                      {n.spaces?.icon} {n.title || "Başlıksız"}
+                    </span>
+                    <span className="text-xs text-muted">{formatDateTime(n.updated_at)}</span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          )}
+        </BentoCard>
+
+        {/* Alanlarım */}
+        <BentoCard title="Alanlarım" className="sm:col-span-2 lg:col-span-3">
+          {spaces.length === 0 ? (
             <p className="text-sm text-muted">
               Henüz alan yok. Sol menüden “+ Space” ile oluştur.
             </p>
           ) : (
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-              {list.map((s) => (
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
+              {spaces.map((s) => (
                 <Link
                   key={s.id}
                   href={`/dashboard/space/${s.id}`}
@@ -41,9 +99,7 @@ export default async function DashboardPage() {
                   >
                     {s.icon}
                   </span>
-                  <span className="truncate text-sm font-medium text-foreground">
-                    {s.name}
-                  </span>
+                  <span className="truncate text-sm font-medium text-foreground">{s.name}</span>
                 </Link>
               ))}
             </div>

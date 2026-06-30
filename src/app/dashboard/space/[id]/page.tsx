@@ -1,13 +1,19 @@
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { SPACE_TYPES, type Space } from "@/lib/types";
+import { getSpaceTasks } from "@/lib/tasks";
+import { getSpaceNotes } from "@/lib/notes";
+import { SpaceView } from "@/components/space/space-view";
 
 export default async function SpacePage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ note?: string }>;
 }) {
   const { id } = await params;
+  const { note: openNoteId } = await searchParams;
   const supabase = await createClient();
 
   // RLS sayesinde sadece kullanıcının kendi space'i döner.
@@ -16,6 +22,9 @@ export default async function SpacePage({
 
   const space = data as Space;
   const typeLabel = SPACE_TYPES.find((t) => t.value === space.type)?.label ?? space.type;
+
+  // Görev + notları paralel çek, tipe göre doğru view'e ver.
+  const [tasks, notes] = await Promise.all([getSpaceTasks(id), getSpaceNotes(id)]);
 
   return (
     <div className="mx-auto max-w-5xl p-6">
@@ -32,13 +41,7 @@ export default async function SpacePage({
         </div>
       </div>
 
-      {/* İçerik Aşama 2'de tipe göre doldurulacak (tracker / kanban / language…). */}
-      <div className="rounded-2xl border border-dashed border-border p-10 text-center">
-        <p className="text-foreground">
-          Bu bir <span className="font-semibold">{typeLabel}</span> alanı.
-        </p>
-        <p className="mt-1 text-sm text-muted">İçerik yakında eklenecek.</p>
-      </div>
+      <SpaceView space={space} tasks={tasks} notes={notes} openNoteId={openNoteId} />
     </div>
   );
 }
