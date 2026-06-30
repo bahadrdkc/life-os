@@ -32,3 +32,16 @@ export async function getTodayTasks(): Promise<TaskWithSpace[]> {
     .order("priority", { ascending: false });
   return (data ?? []) as TaskWithSpace[];
 }
+
+// Son tarihi olmayan + tamamlanmamış görevler (tüm space'ler).
+// Dashboard "Tarihsiz / Genel" kutusu için.
+export async function getUndatedTasks(): Promise<TaskWithSpace[]> {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("tasks")
+    .select("*, spaces(name, icon, color)")
+    .is("due_date", null)
+    .eq("is_done", false)
+    .order("priority", { ascending: false });
+  return (data ?? []) as TaskWithSpace[];
+}
