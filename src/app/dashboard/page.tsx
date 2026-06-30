@@ -2,7 +2,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { BentoCard } from "@/components/ui/bento-card";
 import { QuickCapture } from "@/components/dashboard/quick-capture";
-import { getTodayTasks } from "@/lib/tasks";
+import { getTodayTasks, getUndatedTasks } from "@/lib/tasks";
 import { getRecentNotes } from "@/lib/notes";
 import { formatDateTime } from "@/lib/format";
 import { priorityMeta } from "@/lib/priority";
@@ -12,9 +12,10 @@ export default async function DashboardPage() {
   const supabase = await createClient();
 
   // Tüm panel verisini paralel çek.
-  const [{ data: spacesData }, todayTasks, recentNotes] = await Promise.all([
+  const [{ data: spacesData }, todayTasks, undatedTasks, recentNotes] = await Promise.all([
     supabase.from("spaces").select("*").order("sort_order"),
     getTodayTasks(),
+    getUndatedTasks(),
     getRecentNotes(5),
   ]);
   const spaces = (spacesData ?? []) as Space[];
@@ -54,6 +55,33 @@ export default async function DashboardPage() {
         {/* Hızlı Yakala */}
         <BentoCard title="Hızlı Yakala">
           <QuickCapture spaces={spaces} />
+        </BentoCard>
+
+        {/* Tarihsiz / Genel — son tarihi olmayan, tamamlanmamış görevler */}
+        <BentoCard title="Tarihsiz / Genel" className="lg:col-span-2">
+          {undatedTasks.length === 0 ? (
+            <p className="text-sm text-muted">Tarihsiz görev yok.</p>
+          ) : (
+            <ul className="space-y-1.5">
+              {undatedTasks.map((t) => {
+                const pr = priorityMeta(t.priority);
+                return (
+                  <li key={t.id} className="flex items-center gap-2 text-sm">
+                    <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: t.spaces?.color ?? "#888" }} />
+                    <span className="truncate text-foreground">{t.title}</span>
+                    {t.spaces && (
+                      <span className="shrink-0 text-xs text-muted">
+                        {t.spaces.icon} {t.spaces.name}
+                      </span>
+                    )}
+                    {t.priority > 0 && (
+                      <span className="shrink-0 text-xs" style={{ color: pr.color }}>●</span>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+          )}
         </BentoCard>
 
         {/* Son Notlar */}
